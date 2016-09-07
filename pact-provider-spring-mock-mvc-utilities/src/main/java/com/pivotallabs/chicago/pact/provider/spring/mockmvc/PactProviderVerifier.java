@@ -54,7 +54,7 @@ public class PactProviderVerifier {
         if (request.getBody().isPresent()) {
             mockMvcRequest = mockMvcRequest
                     .content(request.getBody().getValue())
-                    .contentType(MediaType.APPLICATION_JSON);
+                    .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE);
         }
 
         return mockMvcRequest;
@@ -63,5 +63,13 @@ public class PactProviderVerifier {
     private static void verifyResponse(ResultActions resultActions, Response response) throws Exception {
         resultActions.andExpect(MockMvcResultMatchers.status().is(response.getStatus()));
         resultActions.andExpect(MockMvcResultMatchers.content().string(response.getBody().getValue()));
+        response.getHeaders().forEach((headerType, headerValue) -> {
+            try {
+                resultActions
+                        .andExpect(MockMvcResultMatchers.header()
+                                .stringValues(headerType, headerValue));
+            } catch (Exception e) {
+            }
+        });
     }
 }
