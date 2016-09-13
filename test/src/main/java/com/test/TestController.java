@@ -1,6 +1,7 @@
 package com.test;
 
 import com.google.common.collect.ImmutableMap;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
@@ -17,6 +18,12 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 @RestController
 public class TestController {
 
+    TestService testService;
+
+    public TestController(TestService testService) {
+        this.testService = testService;
+    }
+
     @RequestMapping(path = "/**")
     public ResponseEntity login(RequestEntity requestEntity) throws IOException {
         Map body = (LinkedHashMap) requestEntity.getBody();
@@ -27,15 +34,15 @@ public class TestController {
         Map tokenResponse = ImmutableMap.of("message", "invalid credentials");
         HttpStatus status = HttpStatus.UNAUTHORIZED;
 
-        if (username.equals("username") && password.equals("valid-password")) {
-            tokenResponse = ImmutableMap.of("token", "A12345");
-            status = HttpStatus.CREATED;
+        String token = testService.getToken(username, password);
+        if (token != null) {
+            tokenResponse = ImmutableMap.of("token", token);
+            status = HttpStatus.BAD_REQUEST;
         }
 
+
         HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.add("content-type", APPLICATION_JSON_UTF8_VALUE);
-        httpHeaders.add("foo", "bar");
-        httpHeaders.add("foo", "baz");
+        httpHeaders.add("Content-Type", APPLICATION_JSON_UTF8_VALUE);
 
         return new ResponseEntity<>(tokenResponse, httpHeaders, status);
     }

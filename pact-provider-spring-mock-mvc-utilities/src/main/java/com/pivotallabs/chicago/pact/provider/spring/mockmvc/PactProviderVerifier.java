@@ -1,16 +1,23 @@
 package com.pivotallabs.chicago.pact.provider.spring.mockmvc;
 
 import au.com.dius.pact.model.*;
+import au.com.dius.pact.provider.ResponseComparison;
+import com.google.common.collect.ImmutableMap;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.ResultHandler;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class PactProviderVerifier {
     public static void verifyPact(String pactFileLocation, Object controller) {
@@ -57,18 +64,34 @@ public class PactProviderVerifier {
                     .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE);
         }
 
+
+
         return mockMvcRequest;
     }
 
     private static void verifyResponse(ResultActions resultActions, Response response) throws Exception {
-        resultActions.andExpect(MockMvcResultMatchers.status().is(response.getStatus()));
-        resultActions.andExpect(MockMvcResultMatchers.content().string(response.getBody().getValue()));
-        response.getHeaders().forEach((headerType, headerValue) -> {
-            try {
-                resultActions
-                        .andExpect(MockMvcResultMatchers.header()
-                                .stringValues(headerType, headerValue));
-            } catch (Exception e) {
+        resultActions.andDo(new ResultHandler() {
+            @Override
+            public void handle(MvcResult result) throws Exception {
+                MockHttpServletResponse actualResponse = result.getResponse();
+
+                ImmutableMap<String, String> mimeType = ImmutableMap.of("mimeType", "mimeTypeType");
+                ImmutableMap<String, Object> actual = ImmutableMap.of(
+                        "contentType", mimeType,
+                        "statusCode", actualResponse.getStatus(),
+                        "data", actualResponse.getContentAsString());
+
+                HashMap<Object, Object> headers = new HashMap<>();
+
+                actualResponse.getHeaderNames().forEach(name -> {
+                    headers.put(name, actualResponse.getHeaders(name).stream().collect(Collectors.joining(", ")));
+                });
+
+                Map missmatches = (Map) ResponseComparison.compareResponse(response, actual, actualResponse.getStatus(), headers, actualResponse.getContentAsString());
+                // TODO: iterate missmatches and print the right thing
+                // TODO: something is wrong with headers
+                System.out.println();
+
             }
         });
     }

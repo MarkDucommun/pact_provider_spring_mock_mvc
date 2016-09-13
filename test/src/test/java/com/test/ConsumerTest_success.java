@@ -4,6 +4,8 @@ package com.test;
 import au.com.dius.pact.consumer.Pact;
 import au.com.dius.pact.consumer.PactProviderRule;
 import au.com.dius.pact.consumer.PactVerification;
+import au.com.dius.pact.consumer.dsl.DslPart;
+import au.com.dius.pact.consumer.dsl.PactDslJsonBody;
 import au.com.dius.pact.consumer.dsl.PactDslWithProvider;
 import au.com.dius.pact.model.PactFragment;
 import org.junit.Rule;
@@ -15,21 +17,25 @@ import java.io.IOException;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 public class ConsumerTest_success {
+    public static final String TOKEN = "A12345";
     @Rule
     public PactProviderRule mockProvider = new PactProviderRule("test_provider_success", "localhost", 8080, this);
 
     @Pact(consumer="test_consumer")
     public PactFragment createValidFragment(PactDslWithProvider builder) {
+        DslPart requestBody = new PactDslJsonBody().stringType("username").stringType("password").close();
+        DslPart responseBody = new PactDslJsonBody().stringMatcher("token", ".*", TOKEN).close();
+
         return builder
                 .given("valid_credentials")
                 .uponReceiving("request to create Token")
                 .path("/login")
-                .body("{ \"username\": \"username\", \"password\": \"valid-password\" }")
+                .body(requestBody)
                 .method("POST")
                 .willRespondWith()
                 .status(201)
-                .matchHeader("content-type", MediaType.APPLICATION_JSON_UTF8_VALUE)
-                .body("{\"token\": \"A12345\"}")
+                .matchHeader("Content-Type", MediaType.APPLICATION_JSON_UTF8_VALUE)
+                .body(responseBody)
                 .toFragment();
     }
 
@@ -38,6 +44,6 @@ public class ConsumerTest_success {
     public void runValidTest() throws IOException {
         String token = new TestClient("http://localhost:8080").login("username", "valid-password");
 
-        assertThat(token).isEqualTo("A12345");
+        assertThat(token).isEqualTo(TOKEN);
     }
 }

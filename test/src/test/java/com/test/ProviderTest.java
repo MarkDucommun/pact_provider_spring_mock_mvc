@@ -1,15 +1,31 @@
 package com.test;
 
 import com.pivotallabs.chicago.pact.provider.spring.mockmvc.PactProviderVerifier;
+import org.junit.Before;
 import org.junit.Test;
 
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+
 public class ProviderTest {
+
+
+    private TestService testService;
+
+    @Before
+    public void setUp() throws Exception {
+        testService = mock(TestService.class);
+    }
+
     @Test
     public void verifiesControllerActionsDefinedInSpecifiedPact() throws Exception {
         String pactFileLocation =
-                "/Users/markducommun/src/pact_provider_spring_mock_mvc/test/target/pacts/test_consumer-test_provider_success.json";
+                "target/pacts/test_consumer-test_provider_success.json";
 
-        TestController testController = new TestController();
+        doReturn("blah").when(testService).getToken(anyString(), anyString());
+
+        TestController testController = new TestController(testService);
 
         PactProviderVerifier.verifyPact(pactFileLocation, testController);
     }
@@ -17,9 +33,9 @@ public class ProviderTest {
     @Test
     public void controllerActionRespondingWith401() throws Exception {
         String pactFileLocation =
-                "/Users/markducommun/src/pact_provider_spring_mock_mvc/test/target/pacts/test_consumer-test_provider_failure.json";
+                "target/pacts/test_consumer-test_provider_failure.json";
 
-        TestController testController = new TestController();
+        TestController testController = new TestController(testService);
 
         PactProviderVerifier.verifyPact(pactFileLocation, testController);
     }
