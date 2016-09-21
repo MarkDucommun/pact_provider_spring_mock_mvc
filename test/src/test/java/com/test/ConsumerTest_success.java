@@ -10,11 +10,12 @@ import au.com.dius.pact.consumer.dsl.PactDslWithProvider;
 import au.com.dius.pact.model.PactFragment;
 import org.junit.Rule;
 import org.junit.Test;
-import org.springframework.http.MediaType;
 
 import java.io.IOException;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
+import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
+import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 
 public class ConsumerTest_success {
     public static final String TOKEN = "A12345";
@@ -30,13 +31,15 @@ public class ConsumerTest_success {
                 .given("valid_credentials")
                 .uponReceiving("request to create Token")
                 .path("/login")
+                .matchHeader(CONTENT_TYPE, APPLICATION_JSON_UTF8_VALUE)
+                .matchHeader("Baz", "Bar")
                 .body(requestBody)
                 .method("POST")
 
                 .willRespondWith()
                 .status(201)
                 .matchHeader("Foo", "Bar")
-                .matchHeader("Content-Type", MediaType.APPLICATION_JSON_UTF8_VALUE)
+                .matchHeader("Content-Type", APPLICATION_JSON_UTF8_VALUE)
                 .body(responseBody)
                 .toFragment();
     }

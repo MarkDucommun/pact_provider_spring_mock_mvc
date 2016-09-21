@@ -1,21 +1,84 @@
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
-
 import com.fasterxml.jackson.module.kotlin.KotlinModule
-import com.jayway.jsonpath.JsonPath
 import com.pivotallabs.chicago.pact.provider.spring.mockmvc.PactProviderVerifier
 import org.assertj.core.api.AssertionsForInterfaceTypes.assertThat
-import org.json.JSONObject
 import org.junit.Test
-import org.springframework.http.HttpHeaders.CONTENT_TYPE
-import org.springframework.http.HttpStatus
-import org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE
+import org.springframework.http.HttpMethod
+import org.springframework.http.RequestEntity
 import org.springframework.http.ResponseEntity
 import org.springframework.test.util.AssertionErrors.fail
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 import java.util.*
 
 class PactProviderVerifierTest {
+
+    @Test
+    fun verifyPact_sendsARequestWithTheSpecifiedMethod() {
+        val interaction = interaction {
+            request {
+                method = "POST"
+                path = "/anyPath"
+            }
+            response {
+                status = 204
+            }
+        }
+
+        verifyPactFromInteraction(interaction, createPactTestController { request ->
+            assertThat(request.method).isEqualTo(HttpMethod.POST)
+
+            ResponseEntity
+                    .noContent()
+                    .build()
+        })
+    }
+
+    @Test
+    fun verifyPact_sendsARequestWithTheSpecifiedPath() {
+        val interaction = interaction {
+            request {
+                method = "POST"
+                path = "/specifiedPath"
+            }
+            response {
+                status = 204
+            }
+        }
+
+        verifyPactFromInteraction(interaction, createPactTestController { request ->
+            assertThat(request.url.path).isEqualTo("/specifiedPath")
+
+            ResponseEntity
+                    .noContent()
+                    .build()
+        })
+    }
+
+    @Test
+    fun verifyPact_sendsARequestWithSpecifiedHeaders() {
+        val interaction = interaction {
+            request {
+                method = "POST"
+                path = "/specifiedPath"
+                headers {
+                    header("Foo", "Bar")
+                }
+            }
+            response {
+                status = 204
+            }
+        }
+
+        verifyPactFromInteraction(interaction, createPactTestController { request ->
+            val fooHeader: MutableList<String>? = request.headers.get("Foo")
+            assertThat(fooHeader).isEqualTo(mutableListOf("Bar"))
+
+            ResponseEntity
+                    .noContent()
+                    .build()
+        })
+    }
 
     @Test
     fun verifyPact_failsWhenStatusIsWrong() {
@@ -26,7 +89,7 @@ class PactProviderVerifierTest {
                     path = "/anyPath"
                 }
                 response {
-                    status = 201
+                    status = 204
                 }
             }
 
@@ -38,7 +101,7 @@ class PactProviderVerifierTest {
 
             fail("expected exception")
         } catch (e: AssertionError) {
-            assertThat(e.message).contains("201")
+            assertThat(e.message).contains("204")
             assertThat(e.message).contains("400")
         }
 
@@ -111,14 +174,14 @@ class PactProviderVerifierTest {
     @RestController
     abstract class AbstractPactTestController {
         @RequestMapping("/**")
-        abstract fun controllerMethod(): ResponseEntity<*>
+        abstract fun controllerMethod(request : RequestEntity<*>): ResponseEntity<*>
     }
 
     companion object {
-        fun createPactTestController(controllerMethodBody: () -> ResponseEntity<*>): Any {
+        fun createPactTestController(controllerMethodBody: (request: RequestEntity<*>) -> ResponseEntity<*>): Any {
             return object : AbstractPactTestController() {
-                override fun controllerMethod(): ResponseEntity<*> {
-                    return controllerMethodBody.invoke()
+                override fun controllerMethod(request: RequestEntity<*>): ResponseEntity<*> {
+                    return controllerMethodBody.invoke(request)
                 }
             }
         }
@@ -126,25 +189,20 @@ class PactProviderVerifierTest {
 }
 
 class PactInteraction() {
-    class PactRequest() {
-        lateinit var method: String
-        lateinit var path: String
-    }
-
-    class PactResponse() {
-        var status = 200
+    abstract class PactEntity() {
         var headers = hashMapOf<String, String>()
-        var matchingRules = hashMapOf<String, HashMap<String, String>>()
 
-        fun headers(init: PactResponse.() -> Unit) {
+        fun headers(init: PactEntity.() -> Unit) {
             init()
         }
 
         fun header(name: String, value: String) {
-            headers.put(name, value);
+            headers.put(name, value)
         }
 
-        fun matchingRules(init: PactResponse.() -> Unit) {
+        var matchingRules = hashMapOf<String, HashMap<String, String>>()
+
+        fun matchingRules(init: PactEntity.() -> Unit) {
             init()
         }
 
@@ -153,9 +211,25 @@ class PactInteraction() {
         }
     }
 
+    class PactRequest() : PactEntity() {
+        lateinit var method: String
+        lateinit var path: String
+    }
+
+    class PactResponse() : PactEntity() {
+        var status = 200
+    }
+
     lateinit var request: PactRequest
     lateinit var response: PactResponse
 
+//    protected fun <T : PactEntity> initTag(pactEntity: T, init: T.() -> Unit): T {
+//        tag.init()
+//        children.add(tag)
+//        return tag
+//    }
+
+    // TODO generify these two functions
     fun request(init: PactRequest.() -> Unit) {
         val pactRequest = PactRequest()
         pactRequest.init()

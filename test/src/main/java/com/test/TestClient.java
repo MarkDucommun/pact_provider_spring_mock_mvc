@@ -3,10 +3,13 @@ package com.test;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
+import org.springframework.http.RequestEntity;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
+import java.net.URI;
 
 public class TestClient {
     private String baseUrl;
@@ -21,7 +24,14 @@ public class TestClient {
         RestTemplate restTemplate = new RestTemplate();
 
         try {
-            String resultString = restTemplate.postForObject(baseUrl + "/login", request, String.class);
+            String url = baseUrl + "/login";
+            RequestEntity<ImmutableMap<String, String>> requestEntity = RequestEntity.post(URI.create(url))
+                    .header("Baz", "Bar")
+                    .body(request);
+
+            ResponseEntity<String> responseEntity = restTemplate.exchange(requestEntity, String.class);
+
+            String resultString = responseEntity.getBody();
 
             JsonNode result = new ObjectMapper().readValue(resultString, JsonNode.class);
 

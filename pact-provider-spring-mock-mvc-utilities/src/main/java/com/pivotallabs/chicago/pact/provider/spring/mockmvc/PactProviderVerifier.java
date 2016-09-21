@@ -24,16 +24,11 @@ import java.util.stream.Collectors;
 
 public class PactProviderVerifier {
     public static void verifyPactFromString(String pactString, Object controller) {
-        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
         try {
+            MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
             RequestResponseInteraction requestResponseInteraction = new ObjectMapper().readValue(pactString, RequestResponseInteraction.class);
 
-            Request request = requestResponseInteraction.getRequest();
-            Response response = requestResponseInteraction.getResponse();
-
-            ResultActions resultActions = performRequest(mockMvc, request);
-
-            verifyResponse(resultActions, response);
+            verifyRequestResponseInteraction(mockMvc, requestResponseInteraction);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -46,18 +41,23 @@ public class PactProviderVerifier {
 
         interactions.forEach(interaction -> {
             try {
-                RequestResponseInteraction requestResponseInteraction = (RequestResponseInteraction) interaction;
-                Request request = requestResponseInteraction.getRequest();
-                Response response = requestResponseInteraction.getResponse();
-
-                ResultActions resultActions = performRequest(mockMvc, request);
-
-                verifyResponse(resultActions, response);
-
+                verifyRequestResponseInteraction(mockMvc, (RequestResponseInteraction) interaction);
             } catch (Exception e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
         });
+    }
+
+    private static void verifyRequestResponseInteraction(
+            MockMvc mockMvc,
+            RequestResponseInteraction requestResponseInteraction
+    ) throws Exception {
+        Request request = requestResponseInteraction.getRequest();
+        Response response = requestResponseInteraction.getResponse();
+
+        ResultActions resultActions = performRequest(mockMvc, request);
+
+        verifyResponse(resultActions, response);
     }
 
     private static List<Interaction> loadPacts(String pactFileLocation) {
@@ -76,6 +76,8 @@ public class PactProviderVerifier {
                 HttpMethod.resolve(request.getMethod()),
                 request.getPath()
         );
+
+        mockMvcRequest.header("Foo", "Bar");
 
         if (request.getBody().isPresent()) {
             mockMvcRequest = mockMvcRequest
