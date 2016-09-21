@@ -1,6 +1,19 @@
+buildscript {
+    ext.kotlin_version = '1.0.3'
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+apply plugin: 'kotlin'
+
 dependencies {
     compile('org.springframework.boot:spring-boot-starter-web')
     compile('com.google.guava:guava:18.0')
+    compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
     testCompile('org.springframework.boot:spring-boot-starter-test')
     testCompile('org.assertj:assertj-core:3.4.1')
@@ -8,4 +21,7 @@ dependencies {
     testCompile('org.mockito:mockito-core:1.+')
     testCompile('au.com.dius:pact-jvm-consumer-junit_2.11:3.2.11')
     testCompile project(':pact-provider-spring-mock-mvc-utilities')
+    testCompile "org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version"
+    testCompile "com.fasterxml.jackson.module:jackson-module-kotlin:2.7.5"
+    testCompile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 }
