@@ -3,6 +3,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.jayway.jsonpath.JsonPath
 import com.pivotallabs.chicago.pact.provider.spring.mockmvc.PactProviderVerifier
 import org.assertj.core.api.AssertionsForInterfaceTypes.assertThat
 import org.json.JSONObject
@@ -109,21 +110,12 @@ class RealFailureTest {
                 }
                 response {
                     status = 201
-                    // TODO can we do better?
-//                    headers {
-//                        + header("Foo", "Bar")
-//                    }
-                    headers = hashMapOf(Pair(
-                            "Foo",
-                            "Bar"))
-//                    matchingRules {
-//                        + rule("$.headers.Foo", )
-//                    }
-                    matchingRules = hashMapOf(Pair(
-                            "$.headers.Foo",
-                            hashMapOf(Pair(
-                                    "regex",
-                                    "Bar"))))
+                    headers {
+                        header("Foo", "Bar")
+                    }
+                    matchingRules {
+                        regexRule("$.headers.Foo", "Bar")
+                    }
                 }
             }
 
@@ -198,32 +190,44 @@ class RealFailureTest {
     }
 }
 
-class Header(val fieldName : String, val fieldValue : String ) {
-}
-
 class PactRequest() {
-    lateinit var method : String
-    lateinit var path : String
+    lateinit var method: String
+    lateinit var path: String
 }
 
 class PactResponse() {
     var status = 200
-//    lateinit var headers : HashMap<String, String>
     var headers = hashMapOf<String, String>()
-    lateinit var matchingRules : HashMap<String, HashMap<String, String>>
+    var matchingRules = hashMapOf<String, HashMap<String, String>>()
+
+    fun headers(init: PactResponse.() -> Unit){
+        init()
+    }
+
+    fun header(name: String, value: String){
+        headers.put(name, value);
+    }
+
+    fun matchingRules(init: PactResponse.() -> Unit){
+        init()
+    }
+
+    fun regexRule(jsonPath: String, regex: String){
+        matchingRules.put(jsonPath, hashMapOf<String, String>(Pair("regex", regex)))
+    }
 }
 
 class PactInteraction() {
-    lateinit var request : PactRequest
-    lateinit var response : PactResponse
+    lateinit var request: PactRequest
+    lateinit var response: PactResponse
 
-    fun request(init: PactRequest.() -> Unit): Unit {
+    fun request(init: PactRequest.() -> Unit) {
         val pactRequest = PactRequest()
         pactRequest.init()
         request = pactRequest
     }
 
-    fun response(init: PactResponse.() -> Unit): Unit {
+    fun response(init: PactResponse.() -> Unit) {
         val pactResponse = PactResponse()
         pactResponse.init()
         response = pactResponse
