@@ -32,8 +32,10 @@ public class ConsumerTest_success {
                 .path("/login")
                 .body(requestBody)
                 .method("POST")
+
                 .willRespondWith()
                 .status(201)
+                .matchHeader("Foo", "Bar")
                 .matchHeader("Content-Type", MediaType.APPLICATION_JSON_UTF8_VALUE)
                 .body(responseBody)
                 .toFragment();

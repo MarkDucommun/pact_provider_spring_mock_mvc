@@ -2,7 +2,9 @@ package com.pivotallabs.chicago.pact.provider.spring.mockmvc;
 
 import au.com.dius.pact.model.*;
 import au.com.dius.pact.provider.ResponseComparison;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
+import org.codehaus.groovy.runtime.powerassert.PowerAssertionError;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -15,17 +17,34 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public class PactProviderVerifier {
+    public static void verifyPactFromString(String pactString, Object controller) {
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        try {
+            RequestResponseInteraction requestResponseInteraction = new ObjectMapper().readValue(pactString, RequestResponseInteraction.class);
+
+            Request request = requestResponseInteraction.getRequest();
+            Response response = requestResponseInteraction.getResponse();
+
+            ResultActions resultActions = performRequest(mockMvc, request);
+
+            verifyResponse(resultActions, response);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static void verifyPact(String pactFileLocation, Object controller) {
         List<Interaction> interactions = loadPacts(pactFileLocation);
 
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
 
-        interactions.stream().forEach(interaction -> {
+        interactions.forEach(interaction -> {
             try {
                 RequestResponseInteraction requestResponseInteraction = (RequestResponseInteraction) interaction;
                 Request request = requestResponseInteraction.getRequest();
@@ -61,10 +80,8 @@ public class PactProviderVerifier {
         if (request.getBody().isPresent()) {
             mockMvcRequest = mockMvcRequest
                     .content(request.getBody().getValue())
-                    .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE);
+                    .contentType(MediaType.APPLICATION_JSON_UTF8_VALUE); // TODO why is this hardcoded?
         }
-
-
 
         return mockMvcRequest;
     }
@@ -90,8 +107,30 @@ public class PactProviderVerifier {
                 Map missmatches = (Map) ResponseComparison.compareResponse(response, actual, actualResponse.getStatus(), headers, actualResponse.getContentAsString());
                 // TODO: iterate missmatches and print the right thing
                 // TODO: something is wrong with headers
-                System.out.println();
 
+                Object statusValidity = missmatches.get("method");
+                if (statusValidity instanceof PowerAssertionError) {
+                    throw (PowerAssertionError) statusValidity;
+                }
+
+                LinkedHashMap<String, Object> headersValidityResponse = (LinkedHashMap) missmatches.get("headers");
+                for (String headerKey : headersValidityResponse.keySet()) {
+                    Object headerValidity = headersValidityResponse.get(headerKey);
+
+                    if (headerValidity instanceof String) {
+                        throw new AssertionError(headerValidity);
+                    }
+
+//                    try {
+//                        String errorMessage = (String) headersValidityResponse.get(headerKey);
+//
+//                    } catch (ClassCastException e) {
+//                    }
+                }
+
+                LinkedHashMap bodyValidityResponse = (LinkedHashMap) missmatches.get("body");
+
+                System.out.printf("");
             }
         });
     }

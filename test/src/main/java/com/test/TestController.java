@@ -1,7 +1,6 @@
 package com.test;
 
 import com.google.common.collect.ImmutableMap;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
@@ -35,14 +34,16 @@ public class TestController {
         HttpStatus status = HttpStatus.UNAUTHORIZED;
 
         String token = testService.getToken(username, password);
-        if (token != null) {
-            tokenResponse = ImmutableMap.of("token", token);
-            status = HttpStatus.BAD_REQUEST;
-        }
 
+        if (token != null) {
+//            tokenResponse = ImmutableMap.of("token", "NOTATOKEN");
+            tokenResponse = null;
+            status = HttpStatus.CREATED;
+        }
 
         HttpHeaders httpHeaders = new HttpHeaders();
         httpHeaders.add("Content-Type", APPLICATION_JSON_UTF8_VALUE);
+        httpHeaders.add("Foo", "Baz");
 
         return new ResponseEntity<>(tokenResponse, httpHeaders, status);
     }
